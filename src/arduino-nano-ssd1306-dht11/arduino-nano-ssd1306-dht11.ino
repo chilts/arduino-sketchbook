@@ -1,3 +1,5 @@
+// ----------------------------------------------------------------------------
+//
 // Temperature sensor (DHT11) to show on an OLED 0.91" 128x32 display.
 //
 // References:
@@ -6,6 +8,7 @@
 // * the `DHTtester` sketch
 // * https://www.arduino.cc/en/Tutorial/BuiltInExamples/BlinkWithoutDelay
 //
+// ----------------------------------------------------------------------------
 
 #include <SPI.h>
 #include <Wire.h>
@@ -33,16 +36,17 @@ int btnPin = 5;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // --- DHT11 ---
-#define DHTPIN 2     // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT11   // DHT 11
-DHT dht(DHTPIN, DHTTYPE);
+// Digital Pin "DATA" connected to the DHT11 sensor
+#define DHT_PIN 2
+#define DHT_TYPE DHT11
+DHT dht(DHT_PIN, DHT_TYPE);
 float hum = 0, tmp = 0, hic = 0;
 
 // state machines - button, display, sensor read
 long btnPressedMs = 0;
 long dhtLastReadInMs = 0;
 const long dhtStabiliseInMs = 2000;
-const long dhtReadIntervalInMs = 5000;
+const long dhtReadIntervalInMs = 2000;
 bool showDisplay;
 const long displayedInMs = 10000;
 
@@ -93,12 +97,12 @@ void loop() {
       Serial.println(F("Button Pressed"));
       btnPressedMs = currentMs;
       showDisplay = true;
-      perhapsReadDht(currentMs);
     }
   }
   else {
     // if the display is on, see if it has timed out
     if ( showDisplay && currentMs > btnPressedMs + displayedInMs ) {
+      Serial.println(F("Turning off Display"));
       btnPressedMs = 0;
       showDisplay = false;
       display.clearDisplay();
@@ -107,11 +111,13 @@ void loop() {
     // else, nothing to do yet - still showing the display
   }
 
-  // check to read the DHT11 sensor after every interval
-  perhapsReadDht(currentMs);
-
-  // write our readings to the OLED
+  // read the DHT and write our readings to the OLED
   if ( showDisplay ) {
+    // We only need to read the DHT if we are displaying something.
+    // This will change if we want to send to a data server using MQTT.
+    perhapsReadDht(currentMs);
+
+    // write to the display
     display.clearDisplay();
     display.setCursor(0, 0);
     display.println(F("------- TOMMY -------"));
@@ -141,12 +147,13 @@ void perhapsReadDht(long currentMs) {
   dhtLastReadInMs = currentMs;
 
   // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor).
+
+  // Sensor readings may also be up to 2 seconds old (it's a very slow sensor).
   hum = dht.readHumidity();
   // Read temperature as Celsius (the default).
   tmp = dht.readTemperature();
 
-  // Check if any reads failed and exit early (to try again).
+  // Check if any reads failed and exit early (to try again next time).
   if (isnan(hum) || isnan(tmp)) {
     Serial.println(F("Failed to read from DHT sensor!"));
     return;
