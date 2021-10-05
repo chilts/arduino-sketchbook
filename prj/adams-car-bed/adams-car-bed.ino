@@ -53,6 +53,7 @@ int engineSwitchPin = 2;
 int headlightsSwitchPin = 3;
 int indicatorLeftSwitchPin = 4;
 int indicatorRightSwitchPin = 5;
+int brakeSwitchPin = 6;
 
 // LEDs
 int engineLedPin = LED_BUILTIN;
@@ -60,13 +61,19 @@ int headlightLedsPin = 12;
 int indicatorLeftLedsPin = 11;
 int indicatorRightLedsPin = 10;
 int acceleratorLedsPin = 9;
+int brakeLedsPin = 8;
 
 // state machines
 bool isEngineOn = false;
 bool isHeadlightsOn = false;
-bool isIndicatorLeftOn = 0;
-bool isIndicatorRightOn = 0;
+bool isIndicatorLeftOn = false;
+bool isIndicatorRightOn = false;
 bool indicatorFlashOn = 0;
+bool isBrakeOn = false;
+
+// indicator timing
+long indicatorOnInMs = 0;
+long indicatorPeriodInMs = 1000;
 
 void setup() {
   // start the serial port
@@ -82,12 +89,14 @@ void setup() {
   pinMode(headlightsSwitchPin, INPUT_PULLUP);
   pinMode(indicatorLeftSwitchPin, INPUT_PULLUP);
   pinMode(indicatorRightSwitchPin, INPUT_PULLUP);
+  pinMode(brakeSwitchPin, INPUT_PULLUP);
 
   // output LEDs (or transistors to LEDs)
   pinMode(engineLedPin, OUTPUT);
   pinMode(headlightLedsPin, OUTPUT);
   pinMode(indicatorLeftLedsPin, OUTPUT);
   pinMode(indicatorRightLedsPin, OUTPUT);
+  pinMode(brakeLedsPin, OUTPUT);
 
   // output PWM
 
@@ -109,16 +118,16 @@ void loop() {
   isIndicatorLeftOn = !digitalRead(indicatorLeftSwitchPin);
   isIndicatorRightOn = !digitalRead(indicatorRightSwitchPin);
   isHeadlightsOn = !digitalRead(headlightsSwitchPin);
-
-  // Serial.print("Engine On : ");
-  // Serial.println(isEngineOn);
+  isBrakeOn = !digitalRead(brakeSwitchPin);
 
   // if the engine is off, then make sure all other lights are off
   digitalWrite(engineLedPin, isEngineOn);
   if ( !isEngineOn ) {
+    indicatorOnInMs = 0;
     digitalWrite(headlightLedsPin, LOW);
     digitalWrite(indicatorLeftLedsPin, LOW);
     digitalWrite(indicatorRightLedsPin, LOW);
+    digitalWrite(brakeLedsPin, LOW);
     delay(loopDelayMs);
     return;
   }
@@ -127,7 +136,38 @@ void loop() {
   // ToDo: ... !!!
 
   // turn on the headlights (for now)
-  digitalWrite(headlightLedsPin, HIGH);
+  digitalWrite(headlightLedsPin, isHeadlightsOn);
+
+  // check if either indicator is on
+  if ( isIndicatorLeftOn || isIndicatorRightOn ) {
+    // start the indicator timer if not already on
+    if ( !indicatorOnInMs ) {
+      indicatorOnInMs = currentMs;
+    }
+
+    // time since indicator was on
+    long timeSinceOnMs = currentMs - indicatorOnInMs;
+    long indicatorWhereabouts = timeSinceOnMs % indicatorPeriodInMs;
+    if ( indicatorWhereabouts < indicatorPeriodInMs / 2 ) {
+      // on (but only if that particular indicator is on)
+      digitalWrite(indicatorLeftLedsPin, isIndicatorLeftOn);
+      digitalWrite(indicatorRightLedsPin, isIndicatorRightOn);
+    }
+    else {
+      // off
+      digitalWrite(indicatorLeftLedsPin, LOW);
+      digitalWrite(indicatorRightLedsPin, LOW);
+    }
+  }
+  else {
+    // both indicators are off, so reset the timer
+    indicatorOnInMs = 0;
+    digitalWrite(indicatorLeftLedsPin, LOW);
+    digitalWrite(indicatorRightLedsPin, LOW);
+  }
+
+  // turn on the brakelights
+  digitalWrite(brakeLedsPin, isBrakeOn);
 
   delay(loopDelayMs);
 }
