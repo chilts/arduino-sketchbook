@@ -1,5 +1,7 @@
 // LCD Keypad Shield
 //
+// Based on the program below and modified a fair bit.
+//
 // More info on here : https://dronebotworkshop.com/lcd-displays-arduino/
 //
 // * Shield Layout : https://i2.wp.com/dronebotworkshop.com/wp-content/uploads/2018/03/LCD-Keypad-Shield-Layout.jpg
@@ -12,31 +14,14 @@
 // * 1 x Reset button connected directly to the Arduino Uno's Reset button
 // * 5 x select/left/right/up/down buttons connected to A0
 //
-//
-//
-//
-//
-//
-//
 
-
-/*
-  LCD Display Shield with Buttons Demo
-  lcd-button-demo.ino
-  Use Display Shield with Analog Buttons
-  DroneBot Workshop 2018
-  https://dronebotworkshop.com
-*/
-
-// Include LiquidCrystal library
 #include <LiquidCrystal.h>
  
 // Setup lcd object with display pinouts
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
-char line0[17];
 char line1[17];
 
-// Define button constants
+// Define button constants (from left to right on the shield)
 #define btnNONE   0
 #define btnSELECT 1
 #define btnUP     2
@@ -44,6 +29,7 @@ char line1[17];
 #define btnRIGHT  4
 #define btnLEFT   5
 
+// Define button values, from low to high, as shown by this program.
 // You should run this program, check each button's value and enter them here.
 #define btnRightVal 0
 #define btnUpVal 133
@@ -51,31 +37,27 @@ char line1[17];
 #define btnLeftVal 483
 #define btnSelectVal 724
 
-// Define variable to hold button analog value
-int adc_key_in = 0;
- 
-// Function to read the buttons
-// Returns button constant value
+// We're going to check about 50 above each reading.
+#define btnTolerance 50
+
+// Convert the ADC analogue value into a key constant.
 int read_LCD_buttons(int val) {
-  // Approx button values are 0, 144, 329, 504, 741, so check 50 above each.
-  // (For right, up, down, left, select.)
-  // My button values are     0, 133, 310, 483, 724.
-  if (val < btnRightVal + 50)
+  if (val < btnRightVal + btnTolerance)
     return btnRIGHT;
 
-  if (val < btnUpVal + 50)
+  if (val < btnUpVal + btnTolerance)
     return btnUP;
 
-  if (val < btnDownVal + 50)
+  if (val < btnDownVal + btnTolerance)
     return btnDOWN;
 
-  if (val < btnLeftVal + 50)
+  if (val < btnLeftVal + btnTolerance)
     return btnLEFT;
 
-  if (val < btnSelectVal + 50)
+  if (val < btnSelectVal + btnTolerance)
     return btnSELECT;
 
-  // no valid response, so nothing currently pressed
+  // no button currently pressed
   return btnNONE;
 } 
 
@@ -86,8 +68,6 @@ void setup() {
   // Print instructions on first line
   lcd.setCursor(0, 0);
   lcd.print("Push a Button ..");
-  lcd.setCursor(0, 1);
-  lcd.print("                ");
 }
   
 void loop() {
